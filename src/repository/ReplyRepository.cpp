@@ -1,5 +1,5 @@
 #include "repository/ReplyRepository.hpp"
-#include "utils/LockGuard.hpp"
+#include <shared_mutex>
 
 ReplyRepository::ReplyRepository()
     : nextId_(1) {}
@@ -7,7 +7,7 @@ ReplyRepository::ReplyRepository()
 ReplyRepository::~ReplyRepository() {}
 
 size_t ReplyRepository::add(const Reply& reply) {
-    LockGuard lock(mutex_);
+    std::unique_lock lock(mutex_);
     size_t id = nextId_++;
     Reply newReply = reply;
     newReply.setId(id);
@@ -16,7 +16,7 @@ size_t ReplyRepository::add(const Reply& reply) {
 }
 
 bool ReplyRepository::update(const Reply& reply) {
-    LockGuard lock(mutex_);
+    std::unique_lock lock(mutex_);
     auto it = replies_.find(reply.getId());
     if (it != replies_.end()) {
         replies_[reply.getId()] = reply;
@@ -26,12 +26,12 @@ bool ReplyRepository::update(const Reply& reply) {
 }
 
 bool ReplyRepository::remove(size_t id) {
-    LockGuard lock(mutex_);
+    std::unique_lock lock(mutex_);
     return replies_.erase(id) > 0;
 }
 
 std::optional<Reply> ReplyRepository::findById(size_t id) const {
-    SharedLockGuard lock(mutex_);
+    std::shared_lock lock(mutex_);
     auto it = replies_.find(id);
     if (it != replies_.end()) {
         return it->second;
@@ -40,7 +40,7 @@ std::optional<Reply> ReplyRepository::findById(size_t id) const {
 }
 
 std::vector<Reply> ReplyRepository::findAll() const {
-    SharedLockGuard lock(mutex_);
+    std::shared_lock lock(mutex_);
     std::vector<Reply> result;
     result.reserve(replies_.size());
     for (const auto& pair : replies_) {
@@ -50,7 +50,7 @@ std::vector<Reply> ReplyRepository::findAll() const {
 }
 
 std::vector<Reply> ReplyRepository::findByJobPostingId(size_t jobPostingId) const {
-    SharedLockGuard lock(mutex_);
+    std::shared_lock lock(mutex_);
     std::vector<Reply> result;
     for (const auto& pair : replies_) {
         if (pair.second.getJobPostingId() == jobPostingId) {
@@ -61,7 +61,7 @@ std::vector<Reply> ReplyRepository::findByJobPostingId(size_t jobPostingId) cons
 }
 
 std::vector<Reply> ReplyRepository::findByWorkerId(size_t workerId) const {
-    SharedLockGuard lock(mutex_);
+    std::shared_lock lock(mutex_);
     std::vector<Reply> result;
     for (const auto& pair : replies_) {
         if (pair.second.getWorkerId() == workerId) {
@@ -72,7 +72,7 @@ std::vector<Reply> ReplyRepository::findByWorkerId(size_t workerId) const {
 }
 
 std::vector<Reply> ReplyRepository::findByStatus(ReplyStatus status) const {
-    SharedLockGuard lock(mutex_);
+    std::shared_lock lock(mutex_);
     std::vector<Reply> result;
     for (const auto& pair : replies_) {
         if (pair.second.getStatus() == status) {
@@ -83,7 +83,7 @@ std::vector<Reply> ReplyRepository::findByStatus(ReplyStatus status) const {
 }
 
 bool ReplyRepository::existsByJobPostingAndWorker(size_t jobPostingId, size_t workerId) const {
-    SharedLockGuard lock(mutex_);
+    std::shared_lock lock(mutex_);
     for (const auto& pair : replies_) {
         if (pair.second.getJobPostingId() == jobPostingId && 
             pair.second.getWorkerId() == workerId) {
